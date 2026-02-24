@@ -1,0 +1,112 @@
+import pygame
+import random
+import time
+
+SIRKA, VYSKA = 800, 600
+FPS = 60
+DOBA_HRY = 30 
+
+POZADI = (10, 10, 15)
+NEON_MODRA = (0, 255, 255)
+NEON_RUZOVA = (255, 0, 255)
+BILA = (255, 255, 255)
+
+pygame.init()
+okno = pygame.display.set_mode((SIRKA, VYSKA))
+pygame.display.set_caption("Aim Trainer")
+hodiny = pygame.time.Clock()
+
+font = pygame.font.SysFont(None, 30)
+font_velky = pygame.font.SysFont(None, 60)
+
+# --- PROMĚNNÉ PRO BARVU ---
+odstin = 180
+barva_terce = pygame.Color(0, 0, 0)
+
+# --- PROMĚNNÉ PRO TLAČÍTKO ---
+# Definujeme obdélník pro tlačítko (střed obrazovky, níže pod statistikami)
+tlacitko_rect = pygame.Rect(SIRKA//2 - 100, VYSKA//2 + 100, 200, 50)
+
+def reset_hry():
+    """Funkce, která nastaví vše do původního stavu pro novou hru"""
+    global skore, kliknuti_celkem, target_radius, start_cas, konec, odstin
+    skore = 0
+    kliknuti_celkem = 0
+    target_radius = 30
+    start_cas = time.time()
+    konec = False
+    odstin = 180
+
+# Prvotní nastavení
+reset_hry()
+target_x = random.randint(50, SIRKA - 50)
+target_y = random.randint(50, VYSKA - 50)
+bezi = True
+
+while bezi:
+    okno.fill(POZADI)
+    ted = time.time()
+    
+    if not konec:
+        zbyvajici_cas = max(0, int(DOBA_HRY - (ted - start_cas)))
+        if zbyvajici_cas <= 0:
+            konec = True
+    
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            bezi = False
+        
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            mx, my = event.pos
+            
+            if not konec:
+                kliknuti_celkem += 1
+                vzdalenost = ((mx - target_x)**2 + (my - target_y)**2)**0.5
+                
+                if vzdalenost <= target_radius:
+                    skore += 1
+                    target_x = random.randint(50, SIRKA - 50)
+                    target_y = random.randint(50, VYSKA - 50)
+                    target_radius = max(15, target_radius - 0.5)
+                    odstin = (odstin + 15) % 360
+            else:
+                # Pokud je konec a klikneme na tlačítko, restartujeme hru
+                if tlacitko_rect.collidepoint(mx, my):
+                    reset_hry()
+                    target_x = random.randint(50, SIRKA - 50)
+                    target_y = random.randint(50, VYSKA - 50)
+
+    if not konec:
+        barva_terce.hsva = (odstin, 100, 100, 100)
+        
+        # Vykreslení terče
+        pygame.draw.circle(okno, (40, 0, 40), (target_x, target_y), target_radius + 5)
+        pygame.draw.circle(okno, barva_terce, (target_x, target_y), target_radius, 2)
+        
+        txt_s = font.render(f"ZASAHY: {skore}", True, NEON_MODRA)
+        txt_c = font.render(f"CAS: {zbyvajici_cas}s", True, BILA)
+        okno.blit(txt_s, (20, 20))
+        okno.blit(txt_c, (SIRKA - 120, 20))
+    else:
+        # OBRAZOVKA KONCE HRY
+        presnost = (skore / kliknuti_celkem * 100) if kliknuti_celkem > 0 else 0
+        
+        img_konec = font_velky.render("TEST HOTOV", True, NEON_RUZOVA)
+        img_stats = font.render(f"Skore: {skore} | Presnost: {presnost:.1f}%", True, BILA)
+        
+        okno.blit(img_konec, (SIRKA//2 - 120, VYSKA//2 - 50))
+        okno.blit(img_stats, (SIRKA//2 - 130, VYSKA//2 + 20))
+
+        # --- VYKRESLENÍ TLAČÍTKA ---
+        # Zjistíme, jestli na tlačítku visí myš (pro efekt zvýraznění)
+        barva_tlacitka = NEON_MODRA if tlacitko_rect.collidepoint(pygame.mouse.get_pos()) else BILA
+        
+        pygame.draw.rect(okno, barva_tlacitka, tlacitko_rect, 2) # Obrys
+        txt_play = font.render("PLAY AGAIN", True, barva_tlacitka)
+        # Vycentrování textu do tlačítka
+        okno.blit(txt_play, (tlacitko_rect.x + 40, tlacitko_rect.y + 15))
+
+    pygame.display.flip()
+    hodiny.tick(FPS)
+
+pygame.quit()
