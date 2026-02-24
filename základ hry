@@ -1,1 +1,74 @@
+import pygame
+import random
+import time
 
+SIRKA, VYSKA = 800, 600
+FPS = 60
+DOBA_HRY = 30 
+
+POZADI = (10, 10, 15)
+NEON_MODRA = (0, 255, 255)
+NEON_RUZOVA = (255, 0, 255)
+BILA = (255, 255, 255)
+
+pygame.init()
+okno = pygame.display.set_mode((SIRKA, VYSKA))
+pygame.display.set_caption("Aim Trainer")
+hodiny = pygame.time.Clock()
+
+font = pygame.font.SysFont(None, 30)
+font_velky = pygame.font.SysFont(None, 60)
+
+skore = 0
+kliknuti_celkem = 0
+target_x = random.randint(50, SIRKA - 50)
+target_y = random.randint(50, VYSKA - 50)
+target_radius = 30
+start_cas = time.time()
+bezi = True
+konec = False
+
+while bezi:
+    okno.fill(POZADI)
+    ted = time.time()
+    zbyvajici_cas = max(0, int(DOBA_HRY - (ted - start_cas)))
+
+    if zbyvajici_cas <= 0:
+        konec = True
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            bezi = False
+        
+        if event.type == pygame.MOUSEBUTTONDOWN and not konec:
+            kliknuti_celkem += 1
+            mx, my = event.pos
+            vzdalenost = ((mx - target_x)**2 + (my - target_y)**2)**0.5
+            
+            if vzdalenost <= target_radius:
+                skore += 1
+                target_x = random.randint(50, SIRKA - 50)
+                target_y = random.randint(50, VYSKA - 50)
+                target_radius = max(15, target_radius - 0.5)
+
+    if not konec:
+        pygame.draw.circle(okno, (60, 0, 60), (target_x, target_y), target_radius + 5)
+        pygame.draw.circle(okno, NEON_RUZOVA, (target_x, target_y), target_radius, 2)
+        
+        txt_s = font.render(f"ZASAHY: {skore}", True, NEON_MODRA)
+        txt_c = font.render(f"CAS: {zbyvajici_cas}s", True, BILA)
+        okno.blit(txt_s, (20, 20))
+        okno.blit(txt_c, (SIRKA - 120, 20))
+    else:
+        presnost = (skore / kliknuti_celkem * 100) if kliknuti_celkem > 0 else 0
+        
+        img_konec = font_velky.render("TEST HOTOV", True, NEON_RUZOVA)
+        img_stats = font.render(f"Skore: {skore} | Presnost: {presnost:.1f}%", True, BILA)
+        
+        okno.blit(img_konec, (SIRKA//2 - 120, VYSKA//2 - 50))
+        okno.blit(img_stats, (SIRKA//2 - 130, VYSKA//2 + 20))
+
+    pygame.display.flip()
+    hodiny.tick(FPS)
+
+pygame.quit()
