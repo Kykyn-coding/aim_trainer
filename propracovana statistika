@@ -1,0 +1,107 @@
+import pygame
+import random
+import time
+
+SIRKA, VYSKA = 800, 600
+FPS = 60
+DOBA_HRY = 30 
+
+POZADI = (10, 10, 15)
+NEON_MODRA = (0, 255, 255)
+NEON_RUZOVA = (255, 0, 255)
+BILA = (255, 255, 255)
+CERVENA = (255, 50, 50)
+ZELENA = (50, 255, 50)
+
+pygame.init()
+okno = pygame.display.set_mode((SIRKA, VYSKA))
+pygame.display.set_caption("Aim Trainer Pro")
+hodiny = pygame.time.Clock()
+
+font_maly = pygame.font.SysFont("Consolas", 24)
+font_stredni = pygame.font.SysFont("Consolas", 32)
+font_velky = pygame.font.SysFont("Consolas", 70, bold=True)
+
+skore = 0
+kliknuti_celkem = 0
+combo = 0
+max_combo = 0
+reakcni_casy = []
+
+target_x = random.randint(50, SIRKA - 50)
+target_y = random.randint(50, VYSKA - 50)
+target_radius = 30
+
+start_cas = time.time()
+cas_zjeveni_terce = start_cas
+bezi = True
+konec = False
+
+while bezi:
+    okno.fill(POZADI)
+    ted = time.time()
+    uplynuly_cas = ted - start_cas
+    zbyvajici_cas = max(0, int(DOBA_HRY - uplynuly_cas))
+
+    if zbyvajici_cas <= 0 and not konec:
+        konec = True
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            bezi = False
+        
+        if event.type == pygame.MOUSEBUTTONDOWN and not konec:
+            kliknuti_celkem += 1
+            mx, my = event.pos
+            vzdalenost = ((mx - target_x)**2 + (my - target_y)**2)**0.5
+            
+            if vzdalenost <= target_radius:
+                skore += 1
+                combo += 1
+                if combo > max_combo:
+                    max_combo = combo
+                
+                reakcni_casy.append(ted - cas_zjeveni_terce)
+                
+                target_x = random.randint(50, SIRKA - 50)
+                target_y = random.randint(50, VYSKA - 50)
+                target_radius = max(15, target_radius - 0.4)
+                cas_zjeveni_terce = time.time()
+            else:
+                combo = 0
+
+    if not konec:
+        pygame.draw.circle(okno, (40, 0, 40), (target_x, target_y), target_radius + 8)
+        pygame.draw.circle(okno, NEON_RUZOVA, (target_x, target_y), target_radius, 3)
+        
+        txt_s = font_maly.render(f"ZASAHY: {skore}  COMBO: {combo}", True, NEON_MODRA)
+        txt_c = font_maly.render(f"CAS: {zbyvajici_cas}s", True, BILA)
+        okno.blit(txt_s, (20, 20))
+        okno.blit(txt_c, (SIRKA - 150, 20))
+    else:
+        presnost = (skore / kliknuti_celkem * 100) if kliknuti_celkem > 0 else 0
+        prumerna_reakce = (sum(reakcni_casy) / len(reakcni_casy) * 1000) if reakcni_casy else 0
+        cile_za_sekundu = skore / DOBA_HRY
+        
+        img_konec = font_velky.render("VYSLEDKY", True, NEON_RUZOVA)
+        
+        s1 = font_stredni.render(f"Zasahy:      {skore}", True, BILA)
+        s2 = font_stredni.render(f"Presnost:    {presnost:.1f} %", True, NEON_MODRA if presnost >= 80 else CERVENA)
+        s3 = font_stredni.render(f"Avg Reakce:  {prumerna_reakce:.0f} ms", True, ZELENA)
+        s4 = font_stredni.render(f"Cilu za sek: {cile_za_sekundu:.2f}", True, BILA)
+        s5 = font_stredni.render(f"Max Combo:   {max_combo}", True, NEON_RUZOVA)
+        
+        okno.blit(img_konec, (SIRKA//2 - 160, 60))
+        okno.blit(s1, (SIRKA//2 - 160, 180))
+        okno.blit(s2, (SIRKA//2 - 160, 230))
+        okno.blit(s3, (SIRKA//2 - 160, 280))
+        okno.blit(s4, (SIRKA//2 - 160, 330))
+        okno.blit(s5, (SIRKA//2 - 160, 380))
+        
+        restart_txt = font_maly.render("Zavri okno pro ukonceni", True, (100, 100, 100))
+        okno.blit(restart_txt, (SIRKA//2 - 140, 500))
+
+    pygame.display.flip()
+    hodiny.tick(FPS)
+
+pygame.quit()
