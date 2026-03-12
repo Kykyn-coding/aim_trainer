@@ -1,0 +1,205 @@
+import pygame
+import random
+import time
+import math
+
+SIRKA, VYSKA = 800, 600
+FPS = 60
+DOBA_HRY = 30 
+
+POZADI = (10, 10, 15)
+NEON_MODRA = (0, 255, 255)
+NEON_RUZOVA = (255, 0, 255)
+BILA = (255, 255, 255)
+CERVENA = (255, 50, 50)
+ZELENA = (50, 255, 50)
+ZLUTA = (255, 255, 0)
+ORANZOVA = (255, 128, 0)
+NEON_ZELENA = (57, 255, 20)      
+NEON_ZLUTA = (223, 255, 0)        
+NEON_ORANZOVA = (255, 94, 0)      
+NEON_FIALOVA = (176, 38, 255)    
+ELECTRIC_MODRA = (0, 102, 255)   
+HOT_PINK = (255, 105, 180)
+CYBER_MINT = (0, 255, 170)     
+ZARIVA_ZLATA = (255, 215, 0)   
+KORALOVA = (255, 111, 97)  
+MAGENTA_GLOW = (255, 0, 144)
+ICE_BLUE = (0, 255, 204)
+SPRING_GREEN = (0, 255, 127)
+LASER_LEMON = (255, 255, 102)
+ULTRA_VIOLET = (157, 0, 255)
+BLOOD_ORANGE = (255, 69, 0)
+
+SEZNAM_BAREV = [NEON_MODRA, NEON_ZELENA, NEON_ZLUTA, NEON_ORANZOVA, NEON_FIALOVA, ELECTRIC_MODRA, HOT_PINK, CYBER_MINT, ZARIVA_ZLATA, KORALOVA, MAGENTA_GLOW, ICE_BLUE, SPRING_GREEN, LASER_LEMON, ULTRA_VIOLET, BLOOD_ORANGE]
+
+pygame.init()
+okno = pygame.display.set_mode((SIRKA, VYSKA))
+pygame.display.set_caption("Aim Trainer")
+hodiny = pygame.time.Clock()
+
+font_maly = pygame.font.SysFont("Consolas", 24)
+font_stredni = pygame.font.SysFont("Consolas", 32)
+font_velky = pygame.font.SysFont("Consolas", 70, bold=True)
+
+skore = 0
+kliknuti_celkem = 0
+combo = 0
+max_combo = 0
+reakcni_casy = []
+chyby_smery = {"Nahore": 0, "Dole": 0, "Vlevo": 0, "Vpravo": 0}
+
+target_x = random.randint(50, SIRKA - 50)
+target_y = random.randint(50, VYSKA - 50)
+target_radius = 30
+target_barva = random.choice(SEZNAM_BAREV)
+
+vlny = []
+cas_posledni_vlny = time.time()
+
+start_cas = time.time()
+cas_zjeveni_terce = start_cas
+bezi = True
+konec = False
+
+while bezi:
+    okno.fill(POZADI)
+    ted = time.time()
+    uplynuly_cas = ted - start_cas
+    zbyvajici_cas = max(0, int(DOBA_HRY - uplynuly_cas))
+
+    if zbyvajici_cas <= 0 and not konec:
+        konec = True
+        barva_nadpis = random.choice(SEZNAM_BAREV)
+        barva_s1 = random.choice(SEZNAM_BAREV)
+        barva_s2 = random.choice(SEZNAM_BAREV)
+        barva_s3 = random.choice(SEZNAM_BAREV)
+        barva_s4 = random.choice(SEZNAM_BAREV)
+        barva_s5 = random.choice(SEZNAM_BAREV)
+        barva_s6 = random.choice(SEZNAM_BAREV)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            bezi = False
+        
+        if event.type == pygame.MOUSEBUTTONDOWN and not konec:
+            kliknuti_celkem += 1
+            mx, my = event.pos
+            vzdalenost = ((mx - target_x)**2 + (my - target_y)**2)**0.5
+            
+            if vzdalenost <= target_radius:
+                skore += 1
+                combo += 1
+                if combo > max_combo:
+                    max_combo = combo
+                
+                reakcni_casy.append(ted - cas_zjeveni_terce)
+                
+                target_x = random.randint(50, SIRKA - 50)
+                target_y = random.randint(50, VYSKA - 50)
+                target_radius = max(15, target_radius - 0.4)
+                cas_zjeveni_terce = time.time()
+                target_barva = random.choice(SEZNAM_BAREV)
+                vlny = [] 
+            else:
+                combo = 0
+                dx = mx - target_x
+                dy = my - target_y
+                
+                if abs(dx) > abs(dy):
+                    if dx > 0:
+                        chyby_smery["Vpravo"] += 1
+                    else:
+                        chyby_smery["Vlevo"] += 1
+                else:
+                    if dy > 0:
+                        chyby_smery["Dole"] += 1
+                    else:
+                        chyby_smery["Nahore"] += 1
+
+    if not konec:
+        if ted - cas_posledni_vlny > 0.3:
+            vlny.append([target_radius, 255])
+            cas_posledni_vlny = ted
+
+        for vlna in vlny[:]:
+            vlna[0] += 2  
+            vlna[1] -= 5  
+            if vlna[1] <= 0:
+                vlny.remove(vlna)
+            else:
+                s = pygame.Surface((SIRKA, VYSKA), pygame.SRCALPHA)
+                pygame.draw.circle(s, (*target_barva, vlna[1]), (target_x, target_y), int(vlna[0]), 2)
+                okno.blit(s, (0, 0))
+
+        pygame.draw.circle(okno, target_barva, (target_x, target_y), target_radius + 8)
+        pygame.draw.circle(okno, BILA, (target_x, target_y), target_radius, 3)
+        
+        txt_s = font_maly.render(f"ZASAHY: {skore}  COMBO: {combo}", True, NEON_MODRA)
+        txt_c = font_maly.render(f"CAS: {zbyvajici_cas}s", True, BILA)
+        okno.blit(txt_s, (20, 20))
+        okno.blit(txt_c, (SIRKA - 150, 20))
+    else:
+        presnost = (skore / kliknuti_celkem * 100) if kliknuti_celkem > 0 else 0
+        prumerna_reakce = (sum(reakcni_casy) / len(reakcni_casy) * 1000) if reakcni_casy else 0
+        cile_za_sekundu = skore / DOBA_HRY
+        
+        rank_jmeno = ""
+        rank_barva = BILA
+        
+        if presnost < 30:
+            rank_jmeno = "BOT"
+            rank_barva = CERVENA
+        elif cile_za_sekundu < 1.0:
+            rank_jmeno = "ZACATECNIK"
+            rank_barva = ZLUTA
+        elif 1.0 <= cile_za_sekundu < 1.8 and presnost < 60:
+            rank_jmeno = "SLEPY PATRON"
+            rank_barva = ORANZOVA
+        elif 1.0 <= cile_za_sekundu < 1.8 and presnost < 85:
+            rank_jmeno = "STRELEC"
+            rank_barva = ZELENA
+        elif 1.0 <= cile_za_sekundu < 1.8 and presnost >= 85:
+            rank_jmeno = "GHOST"
+            rank_barva = ICE_BLUE
+        elif 1.8 <= cile_za_sekundu < 2.5:
+            rank_jmeno = "ELITE SNIPER"
+            rank_barva = NEON_FIALOVA
+        elif cile_za_sekundu >= 2.5 and presnost < 90:
+            rank_jmeno = "GLITCH STRIKER"
+            rank_barva = MAGENTA_GLOW
+        else:
+            rank_jmeno = "GOD"
+            rank_barva = ZARIVA_ZLATA
+
+        if sum(chyby_smery.values()) > 0:
+            nejcastejsi_chyba = max(chyby_smery, key=chyby_smery.get)
+        else:
+            nejcastejsi_chyba = "Zadna"
+        
+        img_konec = font_velky.render("VYSLEDKY", True, barva_nadpis)
+        s1 = font_stredni.render(f"Zasahy:            {skore}", True, barva_s1)
+        s2 = font_stredni.render(f"Presnost:          {presnost:.1f} %", True, barva_s2)
+        s3 = font_stredni.render(f"Avg Reakce:        {prumerna_reakce:.0f} ms", True, barva_s3)
+        s4 = font_stredni.render(f"Cilu za sec:       {cile_za_sekundu:.2f}", True, barva_s4)
+        s5 = font_stredni.render(f"Max Combo:         {max_combo}", True, barva_s5)
+        s6 = font_stredni.render(f"Nejcastejsi Chyba: {nejcastejsi_chyba}", True, barva_s6)
+        
+        okno.blit(img_konec, (SIRKA//2 - 160, 40))
+        okno.blit(s1, (SIRKA//2 - 250, 140))
+        okno.blit(s2, (SIRKA//2 - 250, 185))
+        okno.blit(s3, (SIRKA//2 - 250, 230))
+        okno.blit(s4, (SIRKA//2 - 250, 275))
+        okno.blit(s5, (SIRKA//2 - 250, 320))
+        okno.blit(s6, (SIRKA//2 - 250, 365)) 
+        
+        img_rank = font_velky.render(rank_jmeno, True, rank_barva)
+        okno.blit(img_rank, (SIRKA // 2 - img_rank.get_width() // 2, 430))
+        
+        restart_txt = font_maly.render("Zavri okno pro ukonceni", True, (100, 100, 100))
+        okno.blit(restart_txt, (SIRKA//2 - 140, 530))
+
+    pygame.display.flip()
+    hodiny.tick(FPS)
+
+pygame.quit()
